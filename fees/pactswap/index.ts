@@ -1,41 +1,35 @@
 import { FetchOptions, FetchV2, SimpleAdapter } from "../../adapters/types";
 import { CHAIN } from "../../helpers/chains";
-import { getFee, getFeeClaimsCount, getFeeSmartContract, oneDayInSeconds } from "./helpers";
+import {  getFeeOnDateTime, getFeeSmartContract } from "./helpers";
 
 const fetch: FetchV2 = async (options: FetchOptions) => {
   const dailyFees = options.createBalances();
   const feeSmartContract = await getFeeSmartContract();
   const formattedFeeSmartContract = feeSmartContract.startsWith('0x') ? feeSmartContract : `0x${feeSmartContract}`;
 
-  let startTime = new Date(options.fromTimestamp * 1000).toISOString().replace('Z', '');
+  const startTime = new Date(options.fromTimestamp * 1000).toISOString().replace('Z', '');
+  console.log('startTime', startTime);
   const endTime = new Date(options.toTimestamp * 1000).toISOString().replace('Z', '');
+  console.log('endTime', endTime);
 
-  let count = await getFeeClaimsCount(formattedFeeSmartContract, startTime, endTime);
+  const feeStartTime = await getFeeOnDateTime(formattedFeeSmartContract, startTime);
+  console.log('feeStartTime', feeStartTime);
+  const feeEndTime = await getFeeOnDateTime(formattedFeeSmartContract, endTime);
+  console.log('feeEndTime', feeEndTime);
 
-  if (!count) {
-    return { dailyFees }
-  }
-
-  const maxDays = 30;
-  let currentDays = 0;
-
-  while (count === 1 && currentDays < maxDays) {
-    startTime = new Date(new Date(startTime).getTime() - oneDayInSeconds * 1000 * (currentDays + 1)).toISOString().replace('Z', '');
-    count = await getFeeClaimsCount(formattedFeeSmartContract, startTime, endTime);
-    currentDays++;
-  }
-
-  const fee = await getFee(formattedFeeSmartContract, startTime, endTime, count);
-
-  dailyFees.addGasToken(BigInt(fee).toString());
+  dailyFees.addGasToken(BigInt(feeEndTime - feeStartTime).toString());
 
   return { dailyFees }
 };
 
+// 07 - 0x000000000000000000000000000000000000000000001bc77b21314eb516e92e
+// 09 - 0x000000000000000000000000000000000000000000001bc77b21314eb516e92e
+// 10 - 0x000000000000000000000000000000000000000000001bc77b21314eb516e92e
+
 const adapter: SimpleAdapter = {
   version: 2,
   adapter: {
-    [CHAIN.COINWEB]: {
+    [CHAIN.ETHEREUM]: {
       fetch,
     }
   },
