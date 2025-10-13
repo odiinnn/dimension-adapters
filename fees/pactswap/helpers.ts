@@ -29,11 +29,15 @@ query ($dateTime: NaiveDateTime!, $feeSmartContract: String!) {
 `
 
 export const getFeeOnDateTime = async(feeSmartContract: string, dateTime: string): Promise<number> => {
+  try {
     const feeResponse = await request(COINWEB_URL, queryGetClaimOnDateTime, {
         dateTime: dateTime,
         feeSmartContract: feeSmartContract,
     });
     return Number(feeResponse.shard.snapshots.onTime.fetchClaim.claim.content.feesStored);
+  } catch {
+    return 0;
+  }
 }
 
 export const getFeeSmartContract = async(): Promise<string> => {
